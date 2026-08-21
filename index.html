@@ -13,7 +13,7 @@
 <div class="wrap">
 
   <header class="app-header">
-    <div class="brand"><span class="flag">🇩🇪</span><h1>Deutsch Trainer</h1></div>
+    <div class="brand"><span class="flag">🇩🇪</span><h1>German with Ameen</h1></div>
     <div class="header-actions">
       <button class="icon-btn profile-pill" id="profilePillBtn" type="button">👤 <span id="profilePillName">—</span></button>
       <button class="icon-btn" id="statsBtn" type="button">Stats</button>
@@ -22,6 +22,7 @@
   </header>
 
   <div class="level-tabs" id="levelTabs"></div>
+  <div class="section-tabs" id="sectionTabs"></div>
 
   <!-- PRACTICE VIEW -->
   <div id="practiceView">
@@ -34,7 +35,10 @@
     <div class="card">
       <div class="card-eyebrow">
         <span>Translate into German</span>
-        <span class="tag-chip" id="levelChip">A1</span>
+        <span class="eyebrow-chips">
+          <span class="tag-chip" id="levelChip">A1</span>
+          <span class="tag-chip tag-chip-section" id="sectionChip">General</span>
+        </span>
       </div>
       <div class="prompt-en" id="promptEn">Loading…</div>
       <textarea id="answerInput" rows="2" placeholder="Type your German translation…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
