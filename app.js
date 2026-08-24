@@ -411,7 +411,7 @@
   };
 
   var LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
-  var REVIEW_EVERY = 10;
+  var REVIEW_EVERY = 5;
   var CORRECT_THRESHOLD = 0.8;
   var PROFILES_KEY = "deutschTrainerProfiles.v1";
   var PROGRESS_PREFIX = "deutschTrainerProgress.v1::";
@@ -545,7 +545,7 @@
    * practice data lives under its own PROGRESS_PREFIX key.
    * ------------------------------------------------------------------- */
   function defaultLevelState() {
-    return { total: 0, correct: 0, sinceReview: 0, recentLog: [], tagStats: {}, lastIds: [] };
+    return { total: 0, correct: 0, sinceReview: 0, recentLog: [], tagStats: {}, lastIds: [], decks: {} };
   }
   function progressKeyFor(name) { return PROGRESS_PREFIX + name; }
 
@@ -605,8 +605,12 @@
       if (typeof ls.correct !== "number") ls.correct = 0;
       if (typeof ls.sinceReview !== "number") ls.sinceReview = 0;
       if (!Array.isArray(ls.recentLog)) ls.recentLog = [];
+      // Existing profiles may have a longer log from before REVIEW_EVERY was
+      // lowered — trim immediately so the review checkpoint reflects the new size.
+      while (ls.recentLog.length > REVIEW_EVERY) ls.recentLog.shift();
       if (!ls.tagStats) ls.tagStats = {};
       if (!Array.isArray(ls.lastIds)) ls.lastIds = [];
+      if (!ls.decks || typeof ls.decks !== "object") ls.decks = {};
     });
     if (LEVELS.indexOf(state.currentLevel) === -1) state.currentLevel = "A1";
     var sectionIds = SECTIONS.map(function (sec) { return sec.id; });
@@ -630,28 +634,50 @@
     return s.section === section;
   }
 
+  // Fisher-Yates shuffle of every sentence index in `bank` matching `section`.
+  function buildShuffledDeck(bank, section) {
+    var idxs = [];
+    for (var i = 0; i < bank.length; i++) {
+      if (sentenceMatchesSection(bank[i], section)) idxs.push(i);
+    }
+    for (var j = idxs.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = idxs[j]; idxs[j] = idxs[k]; idxs[k] = tmp;
+    }
+    return idxs;
+  }
+
+  // Hands out sentences from a shuffled "deck" that's dealt down to empty before
+  // reshuffling, so every sentence in the pool is seen once before any repeat —
+  // plain random-each-time repeats far more often than it feels like it should
+  // once a pool gets small (e.g. a single level+section combo).
   function pickSentenceIndex(level) {
     var bank = SENTENCES[level];
     var ls = STATE.levels[level];
-    var avoid = ls.lastIds.slice(-3); // don't repeat any of the last 3 sentences
     var section = STATE.currentSection || "general";
+    if (!ls.decks || typeof ls.decks !== "object") ls.decks = {};
 
-    // First choice: sentences matching the current section, excluding recent repeats.
-    var candidates = [];
-    for (var i = 0; i < bank.length; i++) {
-      if (sentenceMatchesSection(bank[i], section) && avoid.indexOf(i) === -1) candidates.push(i);
-    }
-    // Fallback 1: section has no unseen sentences right now — allow repeats within the section.
-    if (candidates.length === 0) {
-      for (var j = 0; j < bank.length; j++) {
-        if (sentenceMatchesSection(bank[j], section)) candidates.push(j);
+    var deck = ls.decks[section];
+    if (!Array.isArray(deck) || deck.length === 0) {
+      deck = buildShuffledDeck(bank, section);
+      // Safety net: this level has no sentences at all for this section —
+      // fall back to a shuffled deck of the whole level bank so practice never stalls.
+      if (deck.length === 0 && bank.length > 0) {
+        deck = bank.map(function (_, i) { return i; });
+        for (var m = deck.length - 1; m > 0; m--) {
+          var n = Math.floor(Math.random() * (m + 1));
+          var tmp2 = deck[m]; deck[m] = deck[n]; deck[n] = tmp2;
+        }
       }
+      // Avoid a fresh deck starting on the same sentence that just ended the last one.
+      var lastShown = ls.lastIds.length ? ls.lastIds[ls.lastIds.length - 1] : null;
+      if (deck.length > 1 && deck[0] === lastShown) {
+        var t = deck[0]; deck[0] = deck[1]; deck[1] = t;
+      }
+      ls.decks[section] = deck;
     }
-    // Fallback 2 (safety net): this level has no sentences at all for this section —
-    // fall back to the full level bank so practice never stalls.
-    if (candidates.length === 0) candidates = bank.map(function (_, i) { return i; });
-
-    var idx = candidates[Math.floor(Math.random() * candidates.length)];
+    var idx = deck.pop();
+    saveState();
     return idx;
   }
 
@@ -992,6 +1018,9 @@
     return rows;
   }
 
+  // Clicking (or Enter/Space-ing) a topic row expands an inline detail panel
+  // showing that grammar topic's explanation, so "what to work on" can be
+  // followed up with "why" without leaving the modal/stats view.
   function renderTagBars(container, rows, emptyMsg) {
     container.innerHTML = "";
     if (rows.length === 0) {
@@ -1002,15 +1031,31 @@
       return;
     }
     rows.forEach(function (row) {
-      var meta = TAGS[row.tag] || { label: row.tag };
+      var meta = TAGS[row.tag] || { label: row.tag, tip: "" };
+
+      var item = document.createElement("div");
+      item.className = "tag-item";
+
       var wrap = document.createElement("div");
       wrap.className = "tag-row";
+      wrap.setAttribute("role", "button");
+      wrap.setAttribute("tabindex", "0");
+      wrap.setAttribute("aria-expanded", "false");
+
       var name = document.createElement("div");
       name.className = "name";
-      name.textContent = meta.label;
+      var chevron = document.createElement("span");
+      chevron.className = "chevron";
+      chevron.textContent = "▸";
+      var labelSpan = document.createElement("span");
+      labelSpan.textContent = meta.label;
+      name.appendChild(chevron);
+      name.appendChild(labelSpan);
+
       var count = document.createElement("div");
       count.className = "count";
       count.textContent = row.correct + "/" + row.attempts;
+
       var track = document.createElement("div");
       track.className = "bar-track";
       var fill = document.createElement("div");
@@ -1021,10 +1066,28 @@
       span.textContent = row.pct + "%";
       fill.appendChild(span);
       track.appendChild(fill);
+
       wrap.appendChild(name);
       wrap.appendChild(count);
       wrap.appendChild(track);
-      container.appendChild(wrap);
+
+      var detail = document.createElement("div");
+      detail.className = "tag-detail";
+      detail.textContent = meta.tip || "No extra details for this topic yet.";
+
+      function toggle() {
+        var isOpen = item.classList.toggle("expanded");
+        wrap.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        chevron.textContent = isOpen ? "▾" : "▸";
+      }
+      wrap.addEventListener("click", toggle);
+      wrap.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+      });
+
+      item.appendChild(wrap);
+      item.appendChild(detail);
+      container.appendChild(item);
     });
   }
 
