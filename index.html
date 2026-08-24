@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>German with Ameen — German Translation Practice</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇩🇪</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+<section class="app-shell">
+<div class="wrap">
+
+  <header class="app-header">
+    <div class="brand"><span class="flag">🇩🇪</span><h1>German with Ameen</h1></div>
+    <div class="header-actions">
+      <button class="icon-btn profile-pill" id="profilePillBtn" type="button">👤 <span id="profilePillName">—</span></button>
+      <button class="icon-btn" id="statsBtn" type="button">Stats</button>
+      <button class="icon-btn" id="practiceBtn" type="button" style="display:none;">Practice</button>
+    </div>
+  </header>
+
+  <div class="level-tabs" id="levelTabs"></div>
+  <div class="section-tabs" id="sectionTabs"></div>
+
+  <!-- PRACTICE VIEW -->
+  <div id="practiceView">
+    <div class="progress-row">
+      <span class="stat-inline" id="reviewCounter">0 / 10 to next review</span>
+      <div class="progress-track"><div class="progress-fill" id="reviewProgressFill" style="width:0%"></div></div>
+      <span class="stat-inline" id="levelAccuracy">— accuracy</span>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">
+        <span>Translate into German</span>
+        <span class="eyebrow-chips">
+          <span class="tag-chip" id="levelChip">A1</span>
+          <span class="tag-chip tag-chip-section" id="sectionChip">General</span>
+        </span>
+      </div>
+      <div class="prompt-en" id="promptEn">Loading…</div>
+      <textarea id="answerInput" rows="2" placeholder="Type your German translation…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="checkBtn" type="button">Check</button>
+        <button class="btn btn-ghost" id="skipBtn" type="button">Skip</button>
+      </div>
+
+      <div class="feedback" id="feedback">
+        <div class="feedback-status" id="feedbackStatus"><span class="status-dot"></span><span id="feedbackLabel"></span></div>
+        <div class="diff-line" id="diffLine"></div>
+        <div class="ref-line" id="refLine"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="nextBtn" type="button">Next sentence →</button>
+        </div>
+      </div>
+    </div>
+    <footer class="hint">Press <kbd>Enter</kbd> to check, then <kbd>Enter</kbd> again for the next sentence.</footer>
+  </div>
+
+  <!-- STATS VIEW -->
+  <div id="statsView" style="display:none;">
+    <div style="font-size:13px; color: var(--text-secondary); margin-bottom:12px;">Profile: <b id="statsProfileName">—</b></div>
+    <div class="stat-tiles">
+      <div class="stat-tile"><div class="label">Sentences practiced</div><div class="value" id="statTotal">0</div></div>
+      <div class="stat-tile"><div class="label">Overall accuracy</div><div class="value" id="statAccuracy">—</div></div>
+      <div class="stat-tile"><div class="label">Current level</div><div class="value" id="statLevel">A1</div></div>
+    </div>
+    <div class="card">
+      <div class="card-eyebrow"><span>Accuracy by grammar topic (all-time, weakest first)</span></div>
+      <div class="tag-list" id="statsTagList"></div>
+      <div class="empty-note" id="statsEmptyNote" style="display:none;">Practice a few sentences to see your topic breakdown here.</div>
+    </div>
+    <div class="card">
+      <div class="card-eyebrow"><span>Reset</span></div>
+      <div style="font-size:13px; color: var(--text-secondary);" id="resetDesc">This clears all saved progress on this device.</div>
+      <button class="btn btn-ghost" id="resetBtn" type="button" style="margin-top:10px;">Reset progress for this profile…</button>
+      <div class="confirm-row" id="resetConfirmRow">
+        <span>Are you sure?</span>
+        <button class="btn btn-primary" id="resetConfirmYes" type="button" style="background:var(--critical);">Yes, reset</button>
+        <button class="btn btn-ghost" id="resetConfirmNo" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<section class="modal-section">
+<!-- REVIEW MODAL -->
+<div class="modal-overlay" id="reviewModal">
+  <div class="modal">
+    <h2>Progress check — <span id="modalLevel">A1</span></h2>
+    <div class="sub" id="modalSub">Here's how your last 10 sentences went.</div>
+
+    <div class="tag-list" id="modalTagList"></div>
+
+    <div class="section-title">What to work on</div>
+    <ul class="rec-list" id="modalRecList"></ul>
+
+    <div class="level-suggestion" id="modalLevelSuggestion" style="display:none;"></div>
+
+    <button class="btn btn-primary" id="modalCloseBtn" type="button">Keep practicing</button>
+  </div>
+</div>
+</section>
+
+<section class="modal-section">
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal">
+    <h2>Who's practicing?</h2>
+    <div class="sub" id="profileModalSub">Pick a profile or add a new one. Each profile keeps its own separate progress.</div>
+
+    <div id="profileList" class="rec-list"></div>
+
+    <div class="section-title">Add a new profile</div>
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="newProfileInput" class="text-input" style="flex:1;" placeholder="Name" maxlength="24" autocomplete="off">
+      <button class="btn btn-primary" id="addProfileBtn" type="button">Add</button>
+    </div>
+
+    <button class="btn btn-ghost" id="profileModalCloseBtn" type="button" style="width:100%; margin-top:16px;">Cancel</button>
+  </div>
+</div>
+</section>
+
+<script src="js/app.js"></script>
+</body>
+</html>
